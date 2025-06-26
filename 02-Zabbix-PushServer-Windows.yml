@@ -1,0 +1,58 @@
+---
+- name: Ajouter un hôte à Zabbix via l'API
+  hosts: solo
+  gather_facts: no
+  become: no
+
+  vars:
+    zabbix_url: "http://{{ zabbix_ip }}:8081/api_jsonrpc.php"
+    host_name: "{{ new_hostname }}"
+    host_ip: "{{ static_ip | regex_replace('/.*', '') }}"
+    zabbix_auth_token: "50748a8a3080828eebf07eed07105d6d2a89a40f30e03866d9e5f08ebd20251d"
+
+  tasks:
+    - name: Créer un hôte dans Zabbix avec token Bearer
+      uri:
+        url: "{{ zabbix_url }}"
+        method: POST
+        headers:
+          Content-Type: "application/json"
+          Authorization: "Bearer {{ zabbix_auth_token }}"
+        body_format: json
+        body:
+          {
+            "jsonrpc": "2.0",
+            "method": "host.create",
+            "params": {
+              "host": "{{ host_name }}",
+              "interfaces": [
+                {
+                  "type": 1,
+                  "main": 1,
+                  "useip": 1,
+                  "ip": "{{ host_ip }}",
+                  "dns": "",
+                  "port": "10050"
+                }
+              ],
+              "groups": [
+                {
+                  "groupid": "6"
+                }
+              ],
+              "templates": [
+                {
+                  "templateid": "10081"
+                }
+              ]
+            },
+            "id": 2
+          }
+        status_code: 200
+        return_content: yes
+      register: create_host_response
+
+    - name: Afficher la réponse de la création d'hôte
+      debug:
+        var: create_host_response.json
+
